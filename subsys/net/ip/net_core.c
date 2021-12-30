@@ -45,6 +45,8 @@ LOG_MODULE_REGISTER(net_core, CONFIG_NET_CORE_LOG_LEVEL);
 
 #include "dhcpv4.h"
 
+#include "artnetv4.h"
+
 #include "route.h"
 
 #include "packet_socket.h"
@@ -468,6 +470,10 @@ static inline int services_init(void)
 	net_coap_init();
 
 	net_shell_init();
+
+#if defined(CONFIG_NET_ARTNETV4)
+	net_artnetv4_init();
+#endif
 
 	return status;
 }

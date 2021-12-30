@@ -85,6 +85,40 @@ config NET_IPV4_HDR_OPTIONS
 	  Enables IPv4 header options support. Current support for only
 	  ICMPv4 Echo request. Only RecordRoute and Timestamp are handled.
 
+menuconfig NET_ARTNETV4
+	bool "Enable Art-Net 4 support"
+	select NET_MGMT
+	select NET_MGMT_EVENT
+	depends on NET_UDP
+
+if NET_ARTNETV4
+
+config NET_ARTNETV4_FIRMWARE_REVISION
+	hex "Art-Net Node Firmware Revision"
+	default 0x0001
+	range 0 0xFFFF
+	help
+	  Node firmware revision. Controller uses the value to devide if a
+	  firmware update should proceed.
+
+config NET_ARTNETV4_OEM_CODE
+	hex "Art-Net Node OEM Code"
+	default 0xFFFF
+	range 0 0xFFFF
+	help
+	  Node OEM registered code defines a specific manufacturer's product
+	  type.
+
+config NET_ARTNETV4_ESTA_CODE
+	hex "Art-Net Node ESTA Manufacturer Code"
+	default 0x0000
+	range 0 0xFFFF
+	help
+	  Node ESTA manufacturer code is used to represenet equipment
+	  manufacturer which is assigned by ESTA. Can be interpreted as two
+  	  ASCII bytes representing the manufacturer initials.
+
+endif # NET_ARTNETV4
 
 module = NET_IPV4
 module-dep = NET_LOG
@@ -105,6 +139,14 @@ module-str = Log level for DHCPv4 client
 module-help = Enable debug diagnostic from DHCPV4 client.
 source "subsys/net/Kconfig.template.log_config.net"
 endif # NET_DHCPV4
+
+if NET_ARTNETV4
+module = NET_ARTNETV4
+module-dep = NET_LOG
+module-str = Log level for Art-Net 4
+module-help = Enable debug diagnostic from Art-Net protocol.
+source "subsys/net/Kconfig.template.log_config.net"
+endif # NET_ARTNETV4
 
 if NET_IPV4_AUTO
 module = NET_IPV4_AUTO
