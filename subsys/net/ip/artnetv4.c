@@ -39,12 +39,20 @@ LOG_MODULE_REGISTER(net_artnet4, CONFIG_NET_ARTNETV4_LOG_LEVEL);
  * - !! art_rdm_sub
  */
 
+/* Every ArtPollReply packet has some static fields which are not mutable
+ * in time hence simple initialize a template once a memcpy() it later.
+ */
 static struct artnet_art_poll_reply g_poll_reply;
 
+/* Art-Net magic cookie. Used to verify data integrity. */
 static const uint8_t magic_cookie[8] = {
 	'A', 'r', 't', '-', 'N', 'e', 't', 0x00
 };
+
+/* Art-Net v4 protocol version low byte. */
 static const uint8_t protocol_version = 14;
+
+/* Art-Net controller sent settings */
 static uint8_t g_talk_to_me = 0x00;
 static uint8_t g_priority = 0x00;
 
@@ -68,6 +76,7 @@ static void artnet_initialize_static_members(void)
 	sys_put_le16(CONFIG_NET_ARTNETV4_ESTA_CODE, g_poll_reply.esta_man);
 }
 
+/* Any Art-Net packet issued by Node has a default header. */
 static struct net_pkt* artnet_pkt_with_hdr(struct net_if *iface,
 					   struct in_addr *src_addr,
 					   struct in_addr *dst_addr,
@@ -107,6 +116,12 @@ fail:
 	return NULL;
 }
 
+/* Art-Net ArtPoll reply packet. Mostly it has static data which can be known
+ * at compile time. Although it has some dynamic data which requires some
+ * data/events exchange between application and protocol code, e.g. a node
+ * should be capable of changing indicators state upon Controller request,
+ * sending some diagnostics data, etc.
+ */
 static void artnet_send_art_poll_reply(struct net_if *iface)
 {
 	NET_PKT_DATA_ACCESS_DEFINE(artnet_access, struct artnet_art_poll_reply);
@@ -177,6 +192,8 @@ fail:
 	NET_DBG("poll reply: failed");
 }
 
+/* Art-Net controller constantly polls network for any Art-Net node present to
+ * report its status and stuff each 1-5 seconds. */
 static void artnet_handle_art_poll(struct net_if *iface, struct net_pkt *pkt)
 {
 	NET_PKT_DATA_ACCESS_DEFINE(artnet_access, struct artnet_art_poll);
@@ -195,6 +212,7 @@ static void artnet_handle_art_poll(struct net_if *iface, struct net_pkt *pkt)
 	artnet_send_art_poll_reply(iface);
 }
 
+/* Reply to ArtIpProg packet */
 static void artnet_send_art_ip_prog_reply(struct net_if *iface,
 					  union net_ip_header *ip_hdr)
 {
@@ -259,6 +277,9 @@ fail:
 	return;
 }
 
+/* Art-Net Controller should be capable of reprogramming Node IP settings
+ * via Art-Net protocol. The function is used to handle it.
+ */
 static void artnet_handle_art_ip_prog(struct net_if *iface,
 				      struct net_pkt *pkt,
 				      union net_ip_header *ip_hdr)
@@ -313,6 +334,13 @@ static void artnet_handle_art_ip_prog(struct net_if *iface,
 	artnet_send_art_ip_prog_reply(iface, ip_hdr);
 }
 
+/* Actual Art-Net devices payload data. I need to pass it to application
+ * with as small overhead as possible due to high load:
+ *
+ * it's kinda natural for Art-Net node device to receive data at up to 44Hz
+ * rate per port; and one node can utilize up to tens of ports (i.e. some
+ * widely known Art-Net controllers use 16/32 ports per device)
+ */
 static void artnet_handle_art_dmx(struct net_if *iface,
 				  struct net_pkt *pkt)
 {
@@ -343,6 +371,9 @@ static void artnet_handle_art_dmx(struct net_if *iface,
 					ad->data, len);
 }
 
+/* Here I do check Art-Net header and decide on how the node would response
+ * to the received packet. Basically it's a simple switch over op_code.
+ */
 static enum net_verdict net_artnetv4_input(struct net_conn *conn,
 					   struct net_pkt *pkt,
 					   union net_ip_header *ip_hdr,
@@ -409,6 +440,11 @@ static enum net_verdict net_artnetv4_input(struct net_conn *conn,
 	return NET_OK;
 }
 
+/* Init function. It should be used (later) for node runtime configuration
+ * by applicaion code, e.g. number of ports and its description, node
+ * capabilities such as indicator diodes or squawking, any static info
+ * to describe a speficic node
+ */
 int net_artnetv4_init(void)
 {
 	int ret;
