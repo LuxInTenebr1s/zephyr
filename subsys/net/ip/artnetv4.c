@@ -393,6 +393,11 @@ static enum net_verdict net_artnetv4_input(struct net_conn *conn,
 		NET_DBG("ip prog");
 		artnet_handle_art_ip_prog(iface, pkt, ip_hdr);
 		break;
+	case ARTNET_OP_SYNC:
+		NET_DBG("art sync");
+		// TBD: simply send net_event or call callback to make node output
+		// all the received data synchronously
+		break;
 	default:
 		NET_DBG("Received unsupported pkt: [op=0x%x]", op_code);
 		break;
